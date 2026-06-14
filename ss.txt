@@ -1,0 +1,108 @@
+📖 MODUL PRAKTIKUM: SISTEM AUTENTIKASI MULTI-PLATFORM
+Mata Kuliah: Arsitektur Backend Modern
+Topik Utama: Supabase Auth (Email, Google, Facebook, dan WhatsApp OTP)
+Lingkungan: Next.js (App Router)
+🎯 TUJUAN PEMBELAJARAN
+Mahasiswa D3 Manajemen Informatika mampu mengintegrasikan sistem Login/Register ke dalam aplikasi web Next.js menggunakan Supabase Auth, memahami alur kerja OAuth 2.0 (Google/Facebook), dan mengonfigurasi autentikasi berbasis OTP (One Time Password) melalui WhatsApp.
+🔑 SESI 1: PENGANTAR SUPABASE AUTH & OAUTH
+1. Analogi Satpam dan ID Card
+ Di pertemuan sebelumnya, kita menggunakan RLS (Row Level Security) sebagai "Satpam Ruangan". Namun, satpam butuh tahu siapa* yang mau masuk.
+ Supabase Auth adalah mesin pencetak "ID Card" (berupa JWT Token). Setelah user login, Supabase memberikan ID Card ini ke browser pengguna. Setiap kali aplikasi Next.js mau mengambil data ke database*, ia wajib menunjukkan ID Card tersebut ke Satpam RLS.
+2. Apa itu OAuth (Open Authorization)?
+ OAuth adalah sistem di mana kita "meminjam" sistem keamanan perusahaan raksasa (Google/Facebook) agar user tidak perlu repot menghafal password* baru di aplikasi kampus kita.
+✉️ SESI 2: LOGIN TRADISIONAL (EMAIL & PASSWORD)
+Ini adalah metode paling dasar. Supabase secara otomatis akan mengenkripsi password pengguna menggunakan algoritma Bcrypt, sehingga developer pun tidak bisa melihat password asli pengguna.
+1. Praktikum: Kode Register (Sign Up)
+import { supabase } from '@/lib/supabase';
+// Dipanggil saat user menekan tombol "Daftar"
+const daftarEmail = async (email, password) => {
+const { data, error } = await supabase.auth.signUp({
+email: email,
+password: password,
+});
+if (error) alert("Gagal mendaftar: " + error.message);
+else alert("Cek email Anda untuk link konfirmasi!");
+};
+Catatan Kelas: Secara default, Supabase mewajibkan user mengklik link konfirmasi di email mereka sebelum bisa login. Fitur ini bisa dimatikan di Dashboard Supabase -> Authentication -> Providers -> Email -> Matikan Confirm email.
+2. Praktikum: Kode Login (Sign In)
+const loginEmail = async (email, password) => {
+const { data, error } = await supabase.auth.signInWithPassword({
+email: email,
+password: password,
+});
+if (error) alert("Email atau Password salah!");
+else alert("Berhasil Login! Selamat datang.");
+};
+🌐 SESI 3: LOGIN SOSIAL (GOOGLE & FACEBOOK)
+Untuk menggunakan metode ini, kita harus mendaftarkan aplikasi web kita ke portal developer masing-masing platform.
+1. Syarat Wajib Sebelum Coding (Dashboard Setup):
+ Google: Kalian harus masuk ke `console.cloud.google.com`, buat proyek, dan dapatkan Client ID serta Client Secret. Masukkan kode tersebut ke Dashboard Supabase -> Authentication -> Providers -> Google*.
+* Facebook: Masuk ke `developers.facebook.com`, buat aplikasi baru, dapatkan App ID dan App Secret. Masukkan ke pengaturan Supabase.
+2. Praktikum: Kode Login OAuth (Next.js)
+Karena Next.js berjalan di browser, kita menggunakan metode redirect (pengalihan halaman).
+// Fungsi ini bisa digunakan untuk Google maupun Facebook
+const loginSosial = async (namaProvider) => {
+const { data, error } = await supabase.auth.signInWithOAuth({
+provider: namaProvider, // isi dengan 'google' atau 'facebook'
+options: {
+redirectTo: 'http://localhost:3000/dashboard' // Arahkan user ke halaman ini setelah sukses
+}
+});
+if (error) console.error("Gagal login:", error.message);
+};
+// Cara memanggil di tombol HTML:
+// <button onClick={() => loginSosial('google')}>Login with Google</button>
+// <button onClick={() => loginSosial('facebook')}>Login with Facebook</button>
+📱 SESI 4: LOGIN WHATSAPP (OTP)
+Di era modern, banyak pengguna lebih suka dikirimi kode OTP via WhatsApp daripada membuka email. Supabase mendukung ini, namun ada kenyataan industri yang harus dipahami mahasiswa.
+⚠️ Peringatan Industri untuk Mahasiswa:
+* Berbeda dengan Google/Facebook yang gratis, layanan WhatsApp API TIDAK GRATIS.
+ Supabase hanyalah "jembatan". Untuk mengirim pesan WA sungguhan, kalian wajib menyewa layanan pihak ketiga seperti Twilio atau MessageBird, lalu memasukkan API Key Twilio tersebut ke Dashboard* Supabase.
+1. Praktikum: Meminta Kode OTP WhatsApp
+const kirimOtpWa = async (nomorWa) => {
+// Format nomor wajib menggunakan kode negara, contoh: +628123456789
+const { data, error } = await supabase.auth.signInWithOtp({
+phone: nomorWa,
+options: {
+channel: 'whatsapp', // Spesifik meminta via WhatsApp, bukan SMS biasa
+}
+});
+if (error) alert("Gagal kirim OTP: " + error.message);
+else alert("Kode OTP 6 digit telah dikirim ke WA Anda!");
+};
+2. Praktikum: Memverifikasi Kode OTP
+Setelah user menerima pesan WA, mereka memasukkan 6 digit angka ke antarmuka aplikasi kita.
+const verifikasiOtp = async (nomorWa, kodeOtp) => {
+const { data, error } = await supabase.auth.verifyOtp({
+phone: nomorWa,
+token: kodeOtp,
+type: 'sms', // Tipe verifikasi untuk phone/WA tetap menggunakan string 'sms'
+});
+if (error) alert("Kode OTP salah atau kadaluarsa!");
+else alert("Verifikasi sukses! Anda berhasil masuk.");
+};
+🛡️ SESI 5: MENGENALI SIAPA YANG SEDANG LOGIN
+Setelah berhasil login dengan metode apa pun, aplikasi Next.js kita perlu tahu data diri user (seperti nama, email, atau nomor HP) untuk ditampilkan di Navbar atau profil.
+Praktikum: Mengambil Data Sesi (Session)
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+export default function ProfilUser() {
+const [user, setUser] = useState(null);
+useEffect(() => {
+// Mengecek apakah ada user yang sedang login saat ini
+const cekUser = async () => {
+const { data: { session } } = await supabase.auth.getSession();
+if (session) {
+setUser(session.user);
+}
+};
+cekUser();
+}, []);
+if (!user) return <p>Silakan login terlebih dahulu.</p>;
+return (
+<div>
+<h2>Halo, {user.email || user.phone}!</h2>
+<button onClick={() => supabase.auth.signOut()}>Logout</button>
+</div>
+);
+}
