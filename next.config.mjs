@@ -3,13 +3,11 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'arzbbnxzivyrdtfoxouu.supabase.co', // Ganti dengan ID Supabase kalian
+        protocol: "https",
+        hostname: "icvmwrhmipikjynupkbv.supabase.co",
+        port: "",
+        pathname: "/**",
       },
-      {
-        protocol: 'https',
-        hostname: 'drive.google.com', // Izinkan Google Drive
-      }
     ],
   },
 };
